@@ -1,3 +1,3 @@
-const CronTask = require('./CronTask');
+import CronTask from './CronTask';
 
-module.exports = { CronTask };
+export default { CronTask };

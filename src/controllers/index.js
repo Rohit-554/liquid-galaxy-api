@@ -1,7 +1,7 @@
-const hello = require('./hello');
-const kml = require('./kml');
+import hello from './hello.js';
+import kml from './kml.js';
 
-module.exports = {
+export default {
   hello,
   kml,
 };

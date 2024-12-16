@@ -2,6 +2,6 @@ function hello() {
   return { msg: 'It works!' };
 }
 
-module.exports = {
+export default {
   hello,
 };

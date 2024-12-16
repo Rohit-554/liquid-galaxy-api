@@ -1,10 +1,5 @@
-const { ServerError } = require('../helpers/server');
-const {
-  saveKmlOnDisk,
-  saveKmlUriOnDisk,
-  cleanKml: cleanKmlService,
-  saveQueryOnDisk,
-} = require('../services').kml;
+import { ServerError } from '../helpers/server.js';
+import { saveKmlOnDisk, saveKmlUriOnDisk, cleanKml, saveQueryOnDisk } from '../services/kml.js';
 
 function createKml({ contents, uri }) {
   if (Number(!!contents) + Number(!!uri) !== 1) {
@@ -14,16 +9,16 @@ function createKml({ contents, uri }) {
   return contents ? saveKmlOnDisk(contents) : saveKmlUriOnDisk(uri);
 }
 
-function cleanKml() {
-  return cleanKmlService('');
+function cleanKmlHandler() {
+  return cleanKml('');
 }
 
 function createQuery({ contents = '' }) {
   return saveQueryOnDisk(contents);
 }
 
-module.exports = {
+export default {
   createKml,
-  cleanKml,
+  cleanKml: cleanKmlHandler,
   createQuery,
 };

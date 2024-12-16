@@ -1,14 +1,12 @@
-const config = require('config');
-const debug = require('debug');
+import debug from 'debug';
+import config from 'config';
 
-const prefix = config.has('log.prefix') ? config.get('log.prefix') : '';
+const { has, get } = config;
+
+const prefix = has('log.prefix') ? get('log.prefix') : '';
 
 const info = debug(`${prefix}info`);
 const dev = debug(`${prefix}dev`);
 const error = debug(`${prefix}error`);
 
-module.exports = {
-  info,
-  dev,
-  error,
-};
+export { info, dev, error };

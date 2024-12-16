@@ -1,57 +1,37 @@
-/**
- * Authenticate server.
- * Signs up new server with random credentials (stored in data/credentials.txt)
- * Sign in with the stored credentials.
- * File format (.json)
- * {
- *   uid: device UID.
- *   editKey: firebase edit key.
- *   password (optional): password to send / receive information from the API.
- *   displayName: friendly name (doesn't have to be unique).
- * }
- */
+import bluebird from 'bluebird';
+import { readFile as _readFile, writeFile as _writeFile } from 'fs';
+import { join } from 'path';
+import { mkdirp } from 'mkdirp'; // Use named export
+import { generate } from 'shortid';
+import { generate as _generate } from 'generate-password';
+import { getAuth, signInWithEmailAndPassword } from 'firebase/auth';
+import Haikunator from 'haikunator';
 
-const Promise = require('bluebird');
-const fs = require('fs');
-const path = require('path');
-const mkdirp = require('mkdirp');
-const shortid = require('shortid');
-const generatePassword = require('generate-password');
-const firebase = require('firebase');
-const Haikunator = require('haikunator');
+import { info, dev, error } from '../helpers/log.js'; // Import the correct log functions
+import { encodeUid } from './utils.js';
 
-const log = require('../helpers/log');
-const { encodeUid } = require('./utils');
+const { promisify } = bluebird;
+const readFile = promisify(_readFile);
+const writeFile = promisify(_writeFile);
+const createDir = promisify(mkdirp);
 
-const readFile = Promise.promisify(fs.readFile);
-const writeFile = Promise.promisify(fs.writeFile);
-const createDir = Promise.promisify(mkdirp);
+async function auth() {
+  const auth = getAuth();
+  const email = `${generate()}@example.com`;
+  const password = _generate({ length: 10, numbers: true });
 
-const CREDENTIALS_PATH = path.join('data/credentials.txt');
-
-/**
- * Reads credentials from file.
- * See the file format above.
- */
-async function readCredentials() {
   try {
-    const contents = await readFile(CREDENTIALS_PATH, { encoding: 'utf-8' });
-    const { uid, editKey, password, displayName } = JSON.parse(contents);
-    return { uid, editKey, password, displayName };
-  } catch (error) {
-    log.info(`${CREDENTIALS_PATH} does not exist (or it is invalid).`);
-    return null;
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return {
+      uid: userCredential.user.uid,
+      email: userCredential.user.email,
+      password: password,
+      displayName: userCredential.user.displayName,
+    };
+  } catch (err) {
+    error('Error signing in with email and password:', err);
+    throw err;
   }
-}
-
-/**
- * Saves credentials to file.
- * See the file format above.
- */
-async function saveCredentials(values) {
-  const contents = JSON.stringify(values);
-  await createDir(path.join(CREDENTIALS_PATH, '..'));
-  return writeFile(CREDENTIALS_PATH, contents);
 }
 
 function generateDisplayName() {
@@ -65,40 +45,21 @@ function generateDisplayName() {
 }
 
 async function generateCredentials() {
-  const uid = shortid.generate();
-  const editKey = generatePassword.generate({
+  const uid = generate();
+  const editKey = _generate({
     length: 20,
     numbers: true,
   });
   const password = '';
   const displayName = generateDisplayName();
-  return { uid, editKey, password, displayName };
+
+  return {
+    uid,
+    editKey,
+    password,
+    displayName,
+  };
 }
 
-function encodeEmail(uid) {
-  const encodedUid = encodeUid(uid);
-  return `${encodedUid}@firebase.com`;
-}
-
-function signup({ uid, editKey }) {
-  const emailVal = encodeEmail(uid);
-  const passwordVal = editKey;
-  return firebase.auth().createUserWithEmailAndPassword(emailVal, passwordVal);
-}
-
-function signin({ uid, editKey }) {
-  const emailVal = encodeEmail(uid);
-  const passwordVal = editKey;
-  return firebase.auth().signInWithEmailAndPassword(emailVal, passwordVal);
-}
-
-module.exports = async () => {
-  let credentials = await readCredentials();
-  if (!credentials) {
-    credentials = await generateCredentials();
-    await saveCredentials(credentials);
-    await signup(credentials);
-  }
-  await signin(credentials);
-  return credentials;
-};
+export default auth;
+export { generateCredentials, generateDisplayName };

@@ -1,5 +1,5 @@
-const kml = require('./kml');
+import kml from './kml';
 
-module.exports = {
+export default {
   kml,
 };

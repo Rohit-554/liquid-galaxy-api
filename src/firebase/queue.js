@@ -1,8 +1,7 @@
-const firebase = require('firebase');
-
-const log = require('../helpers/log');
-const { encodeUid } = require('./utils');
-const controllers = require('../controllers');
+import { getDatabase, ref, onValue } from 'firebase/database';
+import { info, dev, error } from '../helpers/log.js'; // Import the correct log functions
+import { encodeUid } from './utils.js';
+import controllers from '../controllers/kml.js';
 
 const { kml } = controllers;
 
@@ -16,34 +15,25 @@ const routes = value => ({
 /* eslint-enable quote-props */
 
 function controllerHandler(route, value) {
-  const routeAction = routes(value)[route];
-  if (!routeAction) {
-    log.dev(`[Firebase] Unrecognised queue type: ${route}`);
-    return;
-  }
-
-  log.dev(`[Firebase] Executing queue type: ${route}`);
-  try {
-    routeAction();
-  } catch (error) {
-    log.error('[Firebase] Failed to execute queue action (might be a sender error):');
-    log.error(`Type ${route}`);
-    log.error(`Value: ${value}`);
-    log.error(error);
+  const handler = routes(value)[route];
+  if (handler) {
+    handler().catch(error => error(`Error handling route ${route}:`, error));
+  } else {
+    error(`No handler found for route ${route}`);
   }
 }
 
 function listenQueue(uid) {
   const encodedUid = encodeUid(uid);
-  const dbRef = firebase.database().ref(`queue/${encodedUid}`);
-  dbRef.orderByChild('timestamp').on('child_added', (snapshot) => {
-    const snapshotVal = snapshot.val();
-    log.dev(`[Firebase] Queue received ${JSON.stringify(snapshotVal)}`);
-    controllerHandler(snapshotVal.type, snapshotVal.value);
-    snapshot.ref.remove();
+  const queueRef = ref(getDatabase(), `/queue/${encodedUid}`);
+  onValue(queueRef, snapshot => {
+    const value = snapshot.val();
+    if (value) {
+      Object.keys(value).forEach(route => {
+        controllerHandler(route, value[route]);
+      });
+    }
   });
 }
 
-module.exports = {
-  listenQueue,
-};
+export { listenQueue };

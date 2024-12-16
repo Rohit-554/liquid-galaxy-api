@@ -1,6 +1,5 @@
-const publicIp = require('public-ip');
-
-const log = require('../helpers/log');
+import { publicIpv4 } from 'public-ip';
+import { info, dev, error } from '../helpers/log.js'; // Import the correct log functions
 
 /**
  * Uid is part of the firebase email name. This encoding makes sure to use only email valid
@@ -16,22 +15,15 @@ function encodeUid(uid) {
 
 /**
  * Fetches current public IP, and returns it Firebase encoded.
- * If there was a problem retrieving the IP, an empty string is returned.
  */
-async function encodedPublicIp() {
+async function fetchPublicIp() {
   try {
-    const ip = await publicIp.v4();
-    log.dev(`Current public IP address: ${ip}`);
-    const encodedIp = ip.replace(/\./g, ':');
-    return encodedIp;
+    const ip = await publicIpv4();
+    return encodeUid(ip);
   } catch (error) {
-    log.error('Public IP address couldn\'t be retrieved:');
-    log.error(error);
-    return '';
+    error('Error fetching public IP:', error);
+    throw error;
   }
 }
 
-module.exports = {
-  encodeUid,
-  encodedPublicIp,
-};
+export { encodeUid, fetchPublicIp as encodedPublicIp };

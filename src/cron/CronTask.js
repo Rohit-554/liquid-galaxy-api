@@ -1,13 +1,12 @@
-const { CronJob } = require('cron');
-
-const log = require('../helpers/log');
+import { CronJob } from 'cron';
+import { dev } from '../helpers/log.js'; // Import the correct log function
 
 class CronTask {
   constructor(name, cronTime, action) {
     const newAction = async () => {
-      log.dev(`[CRON] Started "${name}"`);
+      dev(`[CRON] Started "${name}"`);
       await action();
-      log.dev(`[CRON] Finished "${name}"`);
+      dev(`[CRON] Finished "${name}"`);
     };
     this.action = newAction;
     this.cronJob = new CronJob(cronTime, newAction);
@@ -22,4 +21,4 @@ class CronTask {
   }
 }
 
-module.exports = CronTask;
+export default CronTask;

@@ -1,18 +1,18 @@
-const firebase = require('firebase');
-const config = require('config');
-const log = require('../helpers/log');
+import { initializeApp } from 'firebase/app';
+import config from 'config';
+import { info } from '../helpers/log.js';
 
-const CronTask = require('../cron/CronTask');
-const auth = require('./auth');
-const server = require('./server');
-const queue = require('./queue');
+import CronTask from '../cron/CronTask.js';
+import auth from './auth.js';
+import { reportGeneralInfo, reportAlive } from './server.js';
+import { listenQueue } from './queue.js';
 
 const firebaseConfig = config.get('firebase');
 
 async function initialize() {
-  firebase.initializeApp(firebaseConfig);
+  initializeApp(firebaseConfig);
   const authValues = await auth();
-  await server.reportGeneralInfo({
+  await reportGeneralInfo({
     uid: authValues.uid,
     hasPassword: !!authValues.password,
     displayName: authValues.displayName,
@@ -21,21 +21,21 @@ async function initialize() {
 }
 
 function bgReportAlive(serverUid) {
-  const cron = new CronTask('Report Alive', '0,30 * * * * *', () => server.reportAlive(serverUid));
+  const cron = new CronTask('Report Alive', '0,30 * * * * *', () => reportAlive(serverUid));
   cron.executeOnce();
   cron.start();
 }
 
 function bgListenQueue(serverUid) {
-  queue.listenQueue(serverUid);
+  listenQueue(serverUid);
 }
 
 async function start() {
   const { uid, password } = await initialize();
-  log.info(`[Firebase] Signed in as ${uid} (${password ? `password ${password}` : 'no password'})`);
+  info(`[Firebase] Signed in as ${uid} (${password ? `password ${password}` : 'no password'})`);
 
   bgReportAlive(uid);
   bgListenQueue(uid);
 }
 
-module.exports = { start };
+export default { start };

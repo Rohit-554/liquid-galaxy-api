@@ -1,10 +1,9 @@
-const express = require('express');
+import { Router } from 'express';
+import { info, dev, error } from '../helpers/log.js'; // Import the correct log functions
+import { ServerError } from '../helpers/server.js';
+import controllers from '../controllers/index.js';
 
-const log = require('../helpers/log');
-const { ServerError } = require('../helpers/server');
-const controllers = require('../controllers');
-
-const router = express.Router();
+const router = Router();
 const {
   hello,
   kml,
@@ -18,45 +17,18 @@ const {
  * @param params (req) => [params, ...].
  */
 const controllerHandler = (promise, params) => async (req, res, next) => {
-  const boundParams = params ? params(req, res, next) : [];
+  const boundParams = params ? params(req) : [];
   try {
     const result = await promise(...boundParams);
     return res.json(result || { message: 'OK' });
   } catch (error) {
-    return res.status(500) && next(error);
+    return next(error);
   }
 };
-const c = controllerHandler;
 
-/**
- * Hello!
- */
-router.get('/', c(hello.hello));
+router.get('/', controllerHandler(hello.hello));
+router.post('/kmls', controllerHandler(kml.createKml, req => [req.body]));
+router.post('/kmls/clean', controllerHandler(kml.cleanKml));
+router.post('/queries', controllerHandler(kml.createQuery, req => [req.body]));
 
-/**
- * KMLs.
- */
-router.post('/kmls', c(kml.createKml, req => [req.body]));
-router.post('/kmls/clean', c(kml.cleanKml));
-router.post('/queries', c(kml.createQuery, req => [req.body]));
-
-/**
- * Error-handler.
- */
-router.use((err, req, res, _next) => {
-  // Expected errors always throw ServerError.
-  // Unexpected errors will either throw unexpected stuff or crash the application.
-  if (Object.prototype.isPrototypeOf.call(ServerError.prototype, err)) {
-    return res.status(err.status || 500).json({ error: err.message });
-  }
-
-  log.error('~~~ Unexpected error exception start ~~~');
-  log.error(req);
-  log.error(err);
-  log.error('~~~ Unexpected error exception end ~~~');
-
-
-  return res.status(500).json({ error: '⁽ƈ ͡ (ुŏ̥̥̥̥םŏ̥̥̥̥) ु' });
-});
-
-module.exports = router;
+export default router;
